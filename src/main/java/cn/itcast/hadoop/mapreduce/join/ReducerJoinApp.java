@@ -2,7 +2,6 @@ package cn.itcast.hadoop.mapreduce.join;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -197,9 +196,6 @@ public class ReducerJoinApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
-        System.out.println("2019120322001459610572400823,ALIPAY,191203-170422109391031,451289,兴业银行,2019-12-03 19:13:00,2019-12-18 19:29:00".matches("ALIPAY"));
-
-
         if (args.length!=3) {
             System.out.println("Usage: "+JOB_NAME+" Input parameters <BIG_FILE_INPUT_PATH> <SMALL_FILE_INPUT_PATH> <OUTPUT_PATH>");
         } else {

@@ -14,6 +14,8 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -29,13 +31,12 @@ public class WordCountApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = WordCountApp.class.getSimpleName();
-    // 行数据分隔符
-    private static final String DELIMITER = "delimiter";
+    private static final Logger LOG = LoggerFactory.getLogger(WordCountApp.class);
 
     /**
      * 实现Mapper类
      */
-    static class WordCountMapper extends Mapper<LongWritable, Text, Text, LongWritable> {
+    public static class WordCountMapper extends Mapper<LongWritable, Text, Text, LongWritable> {
         private Text outputKey;
         private LongWritable outputValue;
         @Override
@@ -46,7 +47,8 @@ public class WordCountApp extends Configured implements Tool {
         @Override
         protected void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-            final String[] words = value.toString().split(context.getConfiguration().get(DELIMITER));
+            String line = value.toString().trim().replaceAll("\\W", " ");
+            final String[] words = line.split(" ");
             for (String word : words) {
                 this.outputKey.set(word);
                 context.write(this.outputKey, this.outputValue);
@@ -62,7 +64,7 @@ public class WordCountApp extends Configured implements Tool {
     /**
      * 实现Reducer类
      */
-    static class WordCountReducer extends Reducer<Text, LongWritable, Text, LongWritable> {
+    public static class WordCountReducer extends Reducer<Text, LongWritable, Text, LongWritable> {
         private Text outputKey;
         private LongWritable outputValue;
         @Override
@@ -88,6 +90,11 @@ public class WordCountApp extends Configured implements Tool {
         }
     }
 
+    /**
+     * 构建并提交作业
+     * @param args
+     * @return
+     */
     @Override
     public int run(String[] args) throws Exception {
         // 创建作业实例
@@ -127,8 +134,6 @@ public class WordCountApp extends Configured implements Tool {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
-        // 设置自定义分隔符
-        conf.set(DELIMITER, "\\s");
         int status = 0;
         try {
             status = ToolRunner.run(conf, new WordCountApp(), args);

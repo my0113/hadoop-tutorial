@@ -1,5 +1,6 @@
 package cn.itcast.hadoop.mapreduce.jobflow;
 
+import cn.itcast.hadoop.mapreduce.bean.OrderBean;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;

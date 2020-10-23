@@ -29,7 +29,6 @@
               <transformers>
                 <transformer>
                   <manifestEntries>
-                    <Main-Class>cn.itcast.hadoop.mapreduce.db.imitate.SqoopApp</Main-Class>
                     <Build-Number>${project.version}</Build-Number>
                     <Built-By>itcast</Built-By>
                   </manifestEntries>
@@ -82,6 +81,7 @@
     <hive.version>3.1.2</hive.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+    <commons-cli.version>1.2</commons-cli.version>
     <junit.version>4.13</junit.version>
   </properties>
 </project>

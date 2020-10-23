@@ -18,6 +18,8 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
+import java.util.Objects;
+
 /**
  * 一个模仿Sqoop的例子,仅支持MySQL(主要实现两个功能)
  *      【
@@ -27,6 +29,31 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
  *          2、将HDFS中的文件导出到MySQL表中
  *              bin/sqoop export --connect jdbc:mysql://192.168.88.10:3306/test --username root --password 123456 --table users --fields id,name,age,birthday --export-dir /testdata/users1/part-m-00000 --fields-terminated-by ',' -m 1
  *      】
+ * 测试命令如下：
+ *      // 导出命令
+ *      args = new String[] {
+ *              "--export",
+ *              "--connect", "jdbc:mysql://192.168.88.10:3306/test",
+ *              "--username", "root",
+ *              "--password", "123456",
+ *              "--table", "test",
+ *              "--fields", "id,name,age,birthday",
+ *              "--exportDir", "/apps/mr/data",
+ *              "--fieldsTerminatedBy", "\t",
+ *              "-m","1"
+ *      };
+ *      // 导入命令
+ *      args = new String[] {
+ *              "--import",
+ *              "--connect", "jdbc:mysql://192.168.88.10:3306/test",
+ *              "--username", "root",
+ *              "--password", "123456",
+ *              "--table", "123456",
+ *              "--targetDir", "/apps/mr/data",
+ *              "-m","1"
+ *      };
+ *
+ *
  * @ClassName ImitateSqoopApp
  * @Description
  * @Created by MengYao
@@ -35,36 +62,17 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
  */
 public class SqoopApp {
 
+    // 主程序名称
     private static final String APP_NAME = SqoopApp.class.getSimpleName();
 
 
     public static void main(String[] args) throws Exception {
-        // 导出命令
-        args = new String[] {
-                "--export",
-                "--connect", "jdbc:mysql://192.168.88.10:3306/test",
-                "--username", "root",
-                "--password", "123456",
-                "--table", "test",
-                "--fields", "id,name,age,birthday",
-                "--exportDir", "/apps/mr/data",
-                "--fieldsTerminatedBy", "\t",
-                "-m","1"
-        };
-        // 导入命令
-        args = new String[] {
-                "--import",
-                "--connect", "jdbc:mysql://192.168.88.10:3306/test",
-                "--username", "root",
-                "--password", "123456",
-                "--table", "123456",
-                "--targetDir", "/apps/mr/data",
-                "-m","1"
-        };
         // 提取命令行
         CommandConfig cmdConfig = extractCommand(args);
-        // 构建作业并提交运行
-        System.exit(createJob(cmdConfig));
+        if (Objects.nonNull(cmdConfig)) {
+            // 构建作业并提交运行
+            System.exit(createJob(cmdConfig));
+        }
     }
 
     /**
@@ -91,7 +99,7 @@ public class SqoopApp {
         HelpFormatter formatter = new HelpFormatter();
         try {
             // 解析命令
-            CommandLineParser cli = new DefaultParser();
+            CommandLineParser cli = new PosixParser();//不使用1.4版本common-cli的DefaultParser();
             CommandLine cmdLine = cli.parse(options, args);
             // 询问阶段
             if (cmdLine.hasOption("help") || cmdLine.hasOption("h")) {
@@ -122,6 +130,7 @@ public class SqoopApp {
                 return cmdConfig;
             } else {
                 formatter.printHelp(APP_NAME, options, true);
+                return null;
             }
         } catch (ParseException e) {
             formatter.printHelp(APP_NAME, options, true);

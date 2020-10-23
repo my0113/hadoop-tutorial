@@ -1,10 +1,13 @@
-package cn.itcast.hadoop.mapreduce.jobflow;
+package cn.itcast.hadoop.mapreduce.bean;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * PDD订单POJO
@@ -14,7 +17,7 @@ import java.io.IOException;
  * @Date 2020/10/15 18:27
  * @Version V1.0
  */
-public class OrderBean implements Writable {
+public class OrderBean implements WritableComparable<OrderBean> {
 
     private long id;
     private String orderSn;                // 订单编号
@@ -168,6 +171,17 @@ public class OrderBean implements Writable {
         this.ctime = ctime;
         this.utime = utime;
         this.remark = remark;
+    }
+
+    public static OrderBean of(String record) {
+        if (StringUtils.isEmpty(record)) {
+            return null;
+        }
+        String[] values = record.split("##", 48);
+        if (Objects.isNull(values)||values.length!=48) {
+            return null;
+        }
+        return new OrderBean(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11], values[12], values[13], values[14], values[15], values[16], values[17], values[18], values[19], values[20], values[21], values[22], values[23], values[24], values[25], values[26], values[27], values[28], values[29], values[30], values[31], values[32], values[33], values[34], values[35], values[36], values[37], values[38], values[39], values[40], values[41], values[42], values[43], values[44], values[45], values[46], values[47]);
     }
 
     public long getId() {
@@ -710,5 +724,13 @@ public class OrderBean implements Writable {
         this.ctime = in.readUTF();
         this.utime = in.readUTF();
         this.remark = in.readUTF();
+    }
+
+    @Override
+    public int compareTo(OrderBean o) {
+        if (this.actualAmount > o.getActualAmount()) {
+            return -1;
+        }
+        return 1;
     }
 }
