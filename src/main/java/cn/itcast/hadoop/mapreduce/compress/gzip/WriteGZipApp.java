@@ -4,6 +4,7 @@ import cn.itcast.hadoop.mapreduce.compress.sequencefile.ReadSeqFileApp;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
@@ -14,6 +15,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -29,11 +32,12 @@ public class WriteGZipApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = WriteGZipApp.class.getSimpleName();
+    private static final Logger LOG = LoggerFactory.getLogger(WriteGZipApp.class);
 
     /**
      * 实现Mapper类
      */
-    static class WriteGZipAppMapper extends Mapper<LongWritable, Text, NullWritable, Text> {
+    public static class WriteGZipAppMapper extends Mapper<LongWritable, Text, NullWritable, Text> {
         private NullWritable outputKey;
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
@@ -49,6 +53,11 @@ public class WriteGZipApp extends Configured implements Tool {
         }
     }
 
+    /**
+     * 构建并提交作业
+     * @param args
+     * @return
+     */
     @Override
     public int run(String[] args) throws Exception {
         // 实例化作业
@@ -75,12 +84,15 @@ public class WriteGZipApp extends Configured implements Tool {
         return job.waitForCompletion(true) ? 0 : 1;
     }
 
+    /**
+     * 创建作业
+     * @param args
+     * @return
+     */
     public static int createJob(String[] args) {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
-        conf.set("dfs.datanode.socket.write.timeout", "7200000");
-        // Map输入的最小Block应拆分为多大
-        conf.set("mapreduce.input.fileinputformat.split.minsize", "268435456");
+        conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
         int status = 0;
         try {
             status = ToolRunner.run(conf, new WriteGZipApp(), args);
@@ -91,6 +103,8 @@ public class WriteGZipApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
+        // 测试使用（第一个参数对应的文件必须在HDFS中存在）
+        args = new String[] {"/apps/data1/", "/apps/mapreduce/gzip_out"};
         if (args.length!=2) {
             System.out.println("Usage: "+JOB_NAME+" Input parameters <INPUT_PATH> <OUTPUT_PATH>");
         } else {

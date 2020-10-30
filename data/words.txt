@@ -1,0 +1,4 @@
+hadoop common
+hadoop hdfs
+hadoop mapreduce
+hadoop yarn

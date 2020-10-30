@@ -10,6 +10,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -52,6 +53,8 @@ public class OrderAggApp extends Configured implements Tool {
         }
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            Counter counter = context.getCounter("agg", "count");
+            counter.increment(1);
             OrderBean bean = OrderBean.of(value.toString());
             outputValue.add(bean.getActualAmount());
         }
@@ -149,7 +152,7 @@ public class OrderAggApp extends Configured implements Tool {
             // 模拟root用户提交应用程序
             System.setProperty("HADOOP_USER_NAME", "root");
             // 如果为true时，用户可以跨平台提交应用程序，即从Windows客户端向Linux/Unix服务器提交应用程序
-            conf.set("mapreduce.app-submission.cross-platform","true");
+            conf.set("mapreduce.app-submission.cross-platform", "true");
             // 设置本地jar包路径
             conf.set("windows.app.dir", "D:\\works\\ITCAST\\codes\\hadoop-tutorial\\target\\hadoop-tutorial-1.0-SNAPSHOT.jar");
         }

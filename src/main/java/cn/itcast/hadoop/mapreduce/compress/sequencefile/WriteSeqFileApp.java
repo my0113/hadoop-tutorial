@@ -3,10 +3,8 @@ package cn.itcast.hadoop.mapreduce.compress.sequencefile;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -16,6 +14,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -32,11 +32,12 @@ public class WriteSeqFileApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = WriteSeqFileApp.class.getSimpleName();
+    private static final Logger LOG = LoggerFactory.getLogger(WriteSeqFileApp.class);
 
     /**
      * 实现Mapper类
      */
-    static class WriteSeqFileAppMapper extends Mapper<IntWritable, Text, NullWritable, Text> {
+    static class WriteSeqFileAppMapper extends Mapper<LongWritable, Text, NullWritable, Text> {
         private NullWritable outputKey;
         @Override
         protected void setup(Context context)
@@ -44,7 +45,7 @@ public class WriteSeqFileApp extends Configured implements Tool {
             this.outputKey = NullWritable.get();
         }
         @Override
-        protected void map(IntWritable key, Text value, Context context)
+        protected void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
             context.write(outputKey, value);
         }
@@ -86,8 +87,9 @@ public class WriteSeqFileApp extends Configured implements Tool {
      */
     @Override
     public int run(String[] args) throws Exception {
+        Configuration conf = getConf();
         // 实例化作业
-        Job job = Job.getInstance(getConf(), JOB_NAME);
+        Job job = Job.getInstance(conf, JOB_NAME);
         // 设置作业的主程序
         job.setJarByClass(this.getClass());
         // 设置作业的输入为TextInputFormat（普通文本）
@@ -110,8 +112,12 @@ public class WriteSeqFileApp extends Configured implements Tool {
         job.setOutputKeyClass(NullWritable.class);
         // 设置Reduce端输出的Value类型
         job.setOutputValueClass(Text.class);
+        // 从参数中获取输出路径
+        Path outputDir = new Path(args[1]);
+        // 如果输出路径已存在则删除
+        outputDir.getFileSystem(conf).delete(outputDir, true);
         // 设置作业的输出路径
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job, outputDir);
         // 提交作业并等待执行完成
         return job.waitForCompletion(true) ? 0 : 1;
     }
@@ -124,9 +130,7 @@ public class WriteSeqFileApp extends Configured implements Tool {
     public static int createJob(String[] args) {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
-        conf.set("dfs.datanode.socket.write.timeout", "7200000");
-        // Map输入的最小Block应拆分为多大
-        conf.set("mapreduce.input.fileinputformat.split.minsize", "268435456");
+        conf.set(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, "7200000");
         int status = 0;
         try {
             status = ToolRunner.run(conf, new WriteSeqFileApp(), args);
@@ -141,6 +145,8 @@ public class WriteSeqFileApp extends Configured implements Tool {
      * @param args
      */
     public static void main(String[] args) {
+        // 测试使用（第一个参数对应的文件必须在HDFS中存在）
+        args = new String[] {"/apps/data1/", "/apps/mapreduce/seq_out"};
         if (args.length!=2) {
             System.out.println("Usage: "+JOB_NAME+" Input parameters <INPUT_PATH> <OUTPUT_PATH>");
         } else {

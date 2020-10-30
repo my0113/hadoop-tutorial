@@ -33,7 +33,8 @@ public class UBerApp extends Configured implements Tool {
     // 作业名称
     private static final String JOB_NAME = UBerApp.class.getSimpleName();
     // 行数据分隔符
-    private static final String DELIMITER = "delimiter";
+    private static final long DFS_BLOCK_BYTES = 268435456L;
+    private static final int MAX_MAP_NUMBER = 9;
 
 
     /**
@@ -50,7 +51,7 @@ public class UBerApp extends Configured implements Tool {
         @Override
         protected void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-            final String[] words = value.toString().split(context.getConfiguration().get(DELIMITER));
+            final String[] words = value.toString().split(" ");
             for (String word : words) {
                 this.outputKey.set(word);
                 context.write(this.outputKey, this.outputValue);
@@ -102,9 +103,9 @@ public class UBerApp extends Configured implements Tool {
         // 配置输入处理为TextInputFormat
         job.setInputFormatClass(TextInputFormat.class);
         // 配置作业的输入数据路径
-        FileInputFormat.addInputPath(job, new Path(args[2]));
+        FileInputFormat.addInputPath(job, new Path(args[0]));
         // 从参数中获取输出路径
-        Path outputDir = new Path(args[3]);
+        Path outputDir = new Path(args[1]);
         // 如果输出路径不为空则清空
         outputDir.getFileSystem(conf).delete(outputDir, true);
         // 配置作业的输出数据路径
@@ -134,14 +135,29 @@ public class UBerApp extends Configured implements Tool {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
-        // 启用uber模式
-        conf.setBoolean(MRJobConfig.JOB_UBERTASK_ENABLE, Boolean.parseBoolean(args[0]));
-        // 设置Mapper数量，超过这个阈值，就会认为任务太大而无法进行ubertask优化。用户可以覆盖这个值，但只能向下覆盖。
-        conf.setInt(MRJobConfig.JOB_UBERTASK_MAXMAPS, Integer.parseInt(args[1]));
-        // 设置Reducer数量的阈值，超过这个阈值，就会认为任务对于ubertask优化来说太大了。仅支持0或1，超过这两个值的配置将会被忽略。用户可以覆盖这个值，但只能向下覆盖。
+        /**
+         * 启用uber模式
+         */
+        conf.setBoolean(MRJobConfig.JOB_UBERTASK_ENABLE, true);
+        /**
+         * 设置Mapper数量（默认值是9），超过这个阈值，就会认为任务太大而无法进行ubertask优化。
+         */
+        conf.setInt(MRJobConfig.JOB_UBERTASK_MAXMAPS, MAX_MAP_NUMBER);
+        /**
+         * 设置Reducer数量的阈值（默认值是1），超过这个阈值，就会认为任务对于ubertask优化来说太大了。仅支持0或1。
+         * 超过这两个值的配置将会被忽略。
+         */
         conf.setInt(MRJobConfig.JOB_UBERTASK_MAXREDUCES, 1);
-        // 输入字节数的阈值，超过该阈值，作业对于超级任务优化来说被认为太大。 如果未指定任何值，则将dfs.block.size用作默认值。 如果底层的文件系统不是HDFS，必须保证mapred-site.xml中指定默认值。 用户可以覆盖此值，但只能向下。
-        conf.setLong(MRJobConfig.JOB_UBERTASK_MAXBYTES, 134217728);
+        /**
+         * 输入字节数的阈值，超过该阈值，作业对于超级任务优化来说被认为太大。如果未指定任何值，则将dfs.block.size用作默认值。
+         * 如果底层的文件系统不是HDFS，必须保证mapred-site.xml中指定dfs.block.size的默认值。
+         * 底层的文件系统是HDFS，设置为为256MB（默认是128MB）
+         */
+        conf.setLong(MRJobConfig.JOB_UBERTASK_MAXBYTES, DFS_BLOCK_BYTES);
+        /**
+         * 设置文件切分大小（单位：字节）始终按照UBer模式允许的最小设置
+         */
+        conf.setLong(FileInputFormat.SPLIT_MAXSIZE, DFS_BLOCK_BYTES / (MAX_MAP_NUMBER-1));
         int status = 0;
         try {
             status = ToolRunner.run(conf, new UBerApp(), args);
@@ -152,8 +168,10 @@ public class UBerApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
-        if (args.length!=4) {
-            System.out.println("Usage: "+JOB_NAME+" Input parameters <ENABLE_UBER:true|false> <UBERTASK_MAXMAPS> <INPUT_PATH> <OUTPUT_PATH>");
+        // 测试使用（第一个参数对应的文件必须在HDFS中存在）
+        args = new String[]{"/apps/data1/*", "/apps/mapreduce/uber_out"};
+        if (args.length!=2) {
+            System.out.println("Usage: "+JOB_NAME+" Input parameters <INPUT_PATH> <OUTPUT_PATH>");
         } else {
             int status = createJob(args);
             System.exit(status);

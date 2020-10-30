@@ -7,6 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -32,15 +33,11 @@ public class ReducerJoinApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = ReducerJoinApp.class.getSimpleName();
-    // 行数据分隔符
-    private static final String DELIMITER = "delimiter";
-    // 编码
-    private static final String ENCODING = "encoding";
 
     /**
      * 实现加载订单信息表的Mapper类
      */
-    static class ReducerJoinAppOrderMapper extends Mapper<Text, Text, Text, Text> {
+    static class ReducerJoinAppOrderMapper extends Mapper<LongWritable, Text, Text, Text> {
         private Text outputKey;
         private Text outputValue;
         private String delim;
@@ -48,17 +45,19 @@ public class ReducerJoinApp extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
             this.outputKey = new Text();
             this.outputValue = new Text();
-            this.delim = context.getConfiguration().get(DELIMITER);
+            this.delim = "##";
         }
         @Override
-        protected void map(Text key, Text value, Mapper<Text, Text, Text, Text>.Context context)
+        protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Text, Text>.Context context)
                 throws IOException, InterruptedException {
             String record = value.toString();
             String[] fields = record.split(delim, 48);
             // 获取到订单信息表的payId
-            String payId = fields[38];
-            this.outputKey.set(payId);
-            this.outputValue.set(value.toString());
+            // String payId = fields[38];
+            // 获取订单编号
+            String orderSn = fields[1];
+            this.outputKey.set(orderSn);
+            this.outputValue.set(record);
             // 输出格式为Key=payId，Value=value.toString
             context.write(outputKey, outputValue);
         }
@@ -73,7 +72,7 @@ public class ReducerJoinApp extends Configured implements Tool {
     /**
      * 实现加载支付信息表的Reducer类
      */
-    static class ReducerJoinAppPayMapper extends Mapper<Text, Text, Text, Text> {
+    static class ReducerJoinAppPayMapper extends Mapper<LongWritable, Text, Text, Text> {
         private Text outputKey;
         private Text outputValue;
         private String delim;
@@ -81,14 +80,14 @@ public class ReducerJoinApp extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
             this.outputKey = new Text();
             this.outputValue = new Text();
-            this.delim = context.getConfiguration().get(DELIMITER);
+            this.delim = ",";
         }
         @Override
-        protected void map(Text key, Text value, Mapper<Text, Text, Text, Text>.Context context)
+        protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Text, Text>.Context context)
                 throws IOException, InterruptedException {
             String[] fields = value.toString().split(delim, 8);
             // 设置Key=payId
-            this.outputKey.set(fields[0]);
+            this.outputKey.set(fields[2]);
             // 设置Value=除了payId以外的其他字段
             this.outputValue.set(fields[1] +delim+ fields[2] +delim+ fields[3] +delim+ fields[4] +delim+ fields[5] +delim+ fields[6] +delim+ fields[7]);
             // 输出Key=payId，Value=除了payId以外的其他字段
@@ -118,20 +117,24 @@ public class ReducerJoinApp extends Configured implements Tool {
                 throws IOException, InterruptedException {
             Iterator<Text> iterator = values.iterator();
             while (iterator.hasNext()) {
-                String line = iterator.next().toString();
-                // 左表（订单信息）
-                if (!line.contains("ALIPAY")||!line.contains("WEIXIN")) {
-                    this.outputKey.set(line);
-                }
+                context.write(key, iterator.next());
+                
             }
-            while (iterator.hasNext()) {
-                String line = iterator.next().toString();
-                // 右表（支付信息）
-                if (line.contains("ALIPAY")||line.contains("WEIXIN")) {
-                    this.outputValue.set(line);
-                    context.write(outputKey, outputValue);
-                }
-            }
+//            while (iterator.hasNext()) {
+//                String line = iterator.next().toString();
+//                // 左表（订单信息）
+//                if (!line.contains("ALIPAY")||!line.contains("WEIXIN")) {
+//                    this.outputKey.set(line);
+//                }
+//            }
+//            while (iterator.hasNext()) {
+//                String line = iterator.next().toString();
+//                // 右表（支付信息）
+//                if (line.contains("ALIPAY")||line.contains("WEIXIN")) {
+//                    this.outputValue.set(line);
+//                    context.write(outputKey, outputValue);
+//                }
+//            }
         }
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
@@ -182,10 +185,6 @@ public class ReducerJoinApp extends Configured implements Tool {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
-        // 设置自定义分隔符
-        conf.set(DELIMITER, ",");
-        // 设置字符集
-        conf.set(ENCODING, "UTF-8");
         int status = 0;
         try {
             status = ToolRunner.run(conf, new ReducerJoinApp(), args);
@@ -196,6 +195,8 @@ public class ReducerJoinApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
+        // 测试使用（前两个参数对应的文件必须在HDFS中存在）
+        args = new String[] {"/apps/data2/orders.csv", "/apps/data2/pay.csv", "/apps/mapreduce/reduceside_join"};
         if (args.length!=3) {
             System.out.println("Usage: "+JOB_NAME+" Input parameters <BIG_FILE_INPUT_PATH> <SMALL_FILE_INPUT_PATH> <OUTPUT_PATH>");
         } else {

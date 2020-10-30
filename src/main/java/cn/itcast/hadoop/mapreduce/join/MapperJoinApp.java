@@ -1,5 +1,6 @@
 package cn.itcast.hadoop.mapreduce.join;
 
+import cn.itcast.hadoop.mapreduce.tools.DFSTool;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -39,8 +40,6 @@ public class MapperJoinApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = MapperJoinApp.class.getSimpleName();
-    // 行数据分隔符
-    private static final String DELIMITER = "delimiter";
     // 编码
     private static final String ENCODING = "encoding";
 
@@ -52,17 +51,16 @@ public class MapperJoinApp extends Configured implements Tool {
         private final Map<String, String> payInfo = new HashMap<>();
         private Text outputKey;
         private NullWritable outputValue;
-        private String delim;
+        private String delim = ",";
         @Override
         protected void setup(Mapper<LongWritable, Text, Text,NullWritable>.Context context) throws IOException, InterruptedException {
-            delim = context.getConfiguration().get(DELIMITER);
             // 从分布式缓存中获取文件地址（支付信息表），与conf.getStrings(MRJobConfig.CACHE_FILES)等值
             URI[] files = context.getCacheFiles();
             // 加载文件到Map任务端
-            List<String> lines = FileUtils.readLines(new File(files[0].getPath()), context.getConfiguration().get(ENCODING));
+            List<String> lines = DFSTool.readText(context.getConfiguration(), files[0].getPath());
             // 存放到map中
             lines.forEach(line -> {
-                String[] fields = line.split(delim, 8);
+                String[] fields = line.split(",", 8);
                 // key=payId, value=除了payId以外的其他字段
                 payInfo.put(fields[0], fields[1] +delim+ fields[2] +delim+ fields[3] +delim+ fields[4] +delim+ fields[5] +delim+ fields[6] +delim+ fields[7]);
             });
@@ -72,7 +70,7 @@ public class MapperJoinApp extends Configured implements Tool {
         @Override
         protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Text, NullWritable>.Context context) throws IOException,
                 InterruptedException {
-            String[] fields = value.toString().split(delim, 48);
+            String[] fields = value.toString().split("##", 48);
             // 获取到订单信息表中的payId
             String payId = fields[38];
             // 如果支付信息表包括订单信息表的payId
@@ -106,8 +104,6 @@ public class MapperJoinApp extends Configured implements Tool {
         Configuration conf = getConf();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
-        // 设置自定义分隔符
-        conf.set(DELIMITER, ",");
         // 实例化作业
         Job job = Job.getInstance(conf, JOB_NAME);
         // 添加只读文件到分布式缓存，与conf.set(MRJobConfig.CACHE_FILES)等值
@@ -153,8 +149,6 @@ public class MapperJoinApp extends Configured implements Tool {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
-        // 设置自定义分隔符
-        conf.set(DELIMITER, ",");
         // 设置字符集
         conf.set(ENCODING, "UTF-8");
         int status = 0;
@@ -167,6 +161,8 @@ public class MapperJoinApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
+        // 测试使用（前两个参数对应的文件必须在HDFS中存在）
+        args = new String[] {"/apps/data2/orders.csv", "/apps/data2/pay.csv", "/apps/mapreduce/mapside_join"};
         if (args.length!=3) {
             System.out.println("Usage: "+JOB_NAME+" Input parameters <BIG_FILE_INPUT_PATH> <SMALL_FILE_INPUT_PATH> <OUTPUT_PATH>");
         } else {

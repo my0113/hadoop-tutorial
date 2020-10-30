@@ -20,9 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * 计算订单金额Top5
@@ -41,41 +39,41 @@ public class OrderTop5App extends Configured implements Tool {
     /**
      * 实现Mapper类
      */
-    public static class OrderTop5AppMapper extends Mapper<LongWritable, Text, NullWritable, OrderBean> {
-        private SortedMap<Double, OrderBean> top5 = new TreeMap<>();
+    public static class OrderTop5AppMapper extends Mapper<LongWritable, Text, NullWritable, Text> {
+        private SortedMap<Double, String> top5 = new TreeMap<>(Comparator.reverseOrder());
         private NullWritable outputKey;
-        private OrderBean outputValue;
+        private Text outputValue;
+        private OrderBean bean;
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             this.outputKey = NullWritable.get();
+            this.outputValue = new Text();
         }
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            this.outputValue = OrderBean.of(value.toString());
-            if (top5.size()>=5) {
-                top5.remove(top5.firstKey());
-            }
-            top5.put(outputValue.getActualAmount(), outputValue);
+            this.bean = OrderBean.of(value.toString());
+            top5.put(bean.getActualAmount(), bean.getOrderSn());
         }
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
-            top5.forEach((k,v)->{
-                try {
-                    context.write(outputKey, v);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            int i = 1;
+            for (Map.Entry<Double, String> entry : top5.entrySet()) {
+                if (i>5) {
+                    break;
                 }
-            });
+                this.outputValue.set(entry.getValue()+"\t"+entry.getKey());
+                context.write(outputKey, outputValue);
+                i++;
+            }
+            top5.clear();
         }
     }
 
     /**
      * 实现Reducer类
      */
-    public static class OrderTop5AppReducer extends Reducer<NullWritable, OrderBean, NullWritable, Text> {
-        private SortedMap<Double, OrderBean> top5 = new TreeMap<>();
+    public static class OrderTop5AppReducer extends Reducer<NullWritable, Text, NullWritable, Text> {
+        private SortedMap<Double, String> top5 = new TreeMap<>(Comparator.reverseOrder());
         private NullWritable outputKey;
         private Text outputValue;
         @Override
@@ -84,16 +82,26 @@ public class OrderTop5App extends Configured implements Tool {
             this.outputValue = new Text();
         }
         @Override
-        protected void reduce(NullWritable key, Iterable<OrderBean> values, Context context) throws IOException, InterruptedException {
-            Iterator<OrderBean> iterator = values.iterator();
+        protected void reduce(NullWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            Iterator<Text> iterator = values.iterator();
             while(iterator.hasNext()) {
-                OrderBean bean = iterator.next();
-                outputValue.set(bean.getOrderSn()+"\t"+bean.getActualAmount());
-                context.write(NullWritable.get(), outputValue);
+                Text bean = iterator.next();
+                String[] fields = bean.toString().split("\t",2);
+                top5.put(Double.parseDouble(fields[1]), fields[0]);
             }
         }
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
+            int i = 1;
+            for (Map.Entry<Double, String> entry : top5.entrySet()) {
+                if (i>5) {
+                    break;
+                }
+                this.outputValue.set(entry.getValue()+"\t"+entry.getKey());
+                context.write(outputKey, outputValue);
+                i++;
+            }
+            top5.clear();
             this.outputKey = null;
             this.outputValue = null;
         }
@@ -126,7 +134,7 @@ public class OrderTop5App extends Configured implements Tool {
         // 配置作业的Map函数所需的Key类型
         job.setMapOutputKeyClass(NullWritable.class);
         // 配置作业的Map函数所需的Value类型
-        job.setMapOutputValueClass(OrderBean.class);
+        job.setMapOutputValueClass(Text.class);
         // 配置作业的Reduce函数实现
         job.setReducerClass(OrderTop5AppReducer.class);
         // 配置作业的Reduce函数所需的Key类型
