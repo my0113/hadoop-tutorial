@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
@@ -58,7 +59,7 @@ public class ReadDBApp extends Configured implements Tool {
      * @author mengyao
      *
      */
-    static class ProductWritable implements Writable, DBWritable {
+    public static class ProductWritable implements Writable, DBWritable {
 
         private long id;            // bigint(20) NOT NULL AUTO_INCREMENT,
         private String name;        // varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT '商品名称',
@@ -109,7 +110,10 @@ public class ReadDBApp extends Configured implements Tool {
 
     }
 
-    static class ReadDBAppMapper extends Mapper<LongWritable, ProductWritable, LongWritable, Text> {
+    /**
+     * 实现Mapper类
+     */
+    public static class ReadDBAppMapper extends Mapper<LongWritable, ProductWritable, LongWritable, Text> {
         private LongWritable outputKey;
         private Text outputValue;
         @Override
@@ -137,7 +141,7 @@ public class ReadDBApp extends Configured implements Tool {
         DBConfiguration.configureDB(
                 conf,
                 "com.mysql.jdbc.Driver",
-                "jdbc:mysql://192.168.1.10:3306/shops",
+                "jdbc:mysql://192.168.88.10:3306/shops",
                 "root",
                 "123456");
 
@@ -165,8 +169,8 @@ public class ReadDBApp extends Configured implements Tool {
 
     public static int createJob(String[] args) {
         Configuration conf = new Configuration();
-        conf.set("dfs.datanode.socket.write.timeout", "7200000");
-        conf.set("mapreduce.input.fileinputformat.split.minsize", "268435456");
+        // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
+        conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
         int status = 0;
         try {
             status = ToolRunner.run(conf, new ReadDBApp(), args);
@@ -177,7 +181,6 @@ public class ReadDBApp extends Configured implements Tool {
     }
 
     public static void main(String[] args) {
-        args = new String[] {"D:\\works\\ITCAST\\项目\\企业级用户画像系统\\数据\\dtc.csv"};
         if (args.length!=1) {
             System.out.println("Usage: "+ JOB_NAME+" Input parameters <OUTPUT_PATH>");
         } else {

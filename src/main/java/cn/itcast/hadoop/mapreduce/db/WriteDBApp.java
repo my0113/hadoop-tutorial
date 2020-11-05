@@ -1,7 +1,9 @@
 package cn.itcast.hadoop.mapreduce.db;
 
+import cn.itcast.hadoop.mapreduce.bean.ProductBean;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
@@ -18,6 +20,8 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.partition.HashPartitioner;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -38,87 +42,28 @@ public class WriteDBApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = WriteDBApp.class.getSimpleName();
+    private static final Logger LOG = LoggerFactory.getLogger(WriteDBApp.class);
+
 
     /**
-     * 这个JavaBean需要实现Hadoop的序列化接口Writable和与数据库交互时的序列化接口DBWritable
-     * 官方源码定义如下：
-     *         public class DBOutputFormat<K  extends DBWritable, V> extends OutputFormat<K,V>
-     *         也就是说DBOutputFormat要求输出的key必须是继承自DBWritable的类型
-     * @author mengyao
-     *
+     * 实现Mapper类
      */
-    static class ProductWritable implements Writable, DBWritable {
-
-        private long id;            // bigint(20) NOT NULL AUTO_INCREMENT,
-        private String name;        // varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT '商品名称',
-        private String model;        // varchar(30) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT '型号',
-        private String color;        // varchar(10) COLLATE utf8_unicode_ci DEFAULT NULL COMMENT '颜色',
-        private double price;        // decimal(10,0) DEFAULT NULL COMMENT '售价'
-
-        public void set(long id, String name, String model,
-                        String color, double price) {
-            this.id = id;
-            this.name = name;
-            this.model = model;
-            this.color = color;
-            this.price = price;
-        }
-
-        @Override
-        public void write(PreparedStatement ps) throws SQLException {
-            ps.setLong(1, id);
-            ps.setString(2, name);
-            ps.setString(3, model);
-            ps.setString(4, color);
-            ps.setDouble(5, price);
-        }
-
-        @Override
-        public void readFields(ResultSet rs) throws SQLException {
-            this.id = rs.getLong(1);
-            this.name = rs.getString(2);
-            this.model = rs.getString(3);
-            this.color = rs.getString(4);
-            this.price = rs.getDouble(5);
-        }
-
-        @Override
-        public void write(DataOutput out) throws IOException {
-            out.writeLong(id);
-            out.writeUTF(name);
-            out.writeUTF(model);
-            out.writeUTF(color);
-            out.writeDouble(price);
-        }
-
-        @Override
-        public void readFields(DataInput in) throws IOException {
-            this.id = in.readLong();
-            this.name = in.readUTF();
-            this.model = in.readUTF();
-            this.color = in.readUTF();
-            this.price = in.readDouble();
-
-        }
-
-    }
-
-    static class WriteDBAppMapper extends Mapper<LongWritable, Text, NullWritable, ProductWritable> {
+    public static class WriteDBAppMapper extends Mapper<LongWritable, Text, NullWritable, ProductBean> {
 
         private NullWritable outputKey;
-        private ProductWritable outputValue;
+        private ProductBean outputValue;
 
         @Override
         protected void setup(
-                Mapper<LongWritable, Text, NullWritable, ProductWritable>.Context context)
+                Mapper<LongWritable, Text, NullWritable, ProductBean>.Context context)
                 throws IOException, InterruptedException {
             this.outputKey = NullWritable.get();
-            this.outputValue = new ProductWritable();
+            this.outputValue = new ProductBean();
         }
 
         @Override
         protected void map(LongWritable key, Text value,
-                           Mapper<LongWritable, Text, NullWritable, ProductWritable>.Context context)
+                           Mapper<LongWritable, Text, NullWritable, ProductBean>.Context context)
                 throws IOException, InterruptedException {
             //插入数据库成功的计数器
             final Counter successCounter = context.getCounter("exec", "successfully");
@@ -153,12 +98,12 @@ public class WriteDBApp extends Configured implements Tool {
      * @author mengyao
      *
      */
-    static class DBOutputFormatReducer extends Reducer<NullWritable, ProductWritable, ProductWritable, NullWritable> {
+    public static class DBOutputFormatReducer extends Reducer<NullWritable, ProductBean, ProductBean, NullWritable> {
         @Override
-        protected void reduce(NullWritable key, Iterable<ProductWritable> value,
-                              Reducer<NullWritable, ProductWritable, ProductWritable, NullWritable>.Context context)
+        protected void reduce(NullWritable key, Iterable<ProductBean> value,
+                              Reducer<NullWritable, ProductBean, ProductBean, NullWritable>.Context context)
                 throws IOException, InterruptedException {
-            for (ProductWritable productWritable : value) {
+            for (ProductBean productWritable : value) {
                 context.write(productWritable, key);
             }
         }
@@ -182,13 +127,13 @@ public class WriteDBApp extends Configured implements Tool {
 
         job.setMapperClass(WriteDBAppMapper.class);
         job.setMapOutputKeyClass(NullWritable.class);
-        job.setMapOutputValueClass(ProductWritable.class);
+        job.setMapOutputValueClass(ProductBean.class);
 
         job.setPartitionerClass(HashPartitioner.class);
         job.setNumReduceTasks(1);
 
         job.setReducerClass(DBOutputFormatReducer.class);
-        job.setOutputKeyClass(ProductWritable.class);
+        job.setOutputKeyClass(ProductBean.class);
         job.setOutputValueClass(NullWritable.class);
 
         job.setOutputFormatClass(DBOutputFormat.class);
@@ -200,8 +145,8 @@ public class WriteDBApp extends Configured implements Tool {
 
     public static int createJob(String[] args) {
         Configuration conf = new Configuration();
-        conf.set("dfs.datanode.socket.write.timeout", "7200000");
-        conf.set("mapreduce.input.fileinputformat.split.minsize", "268435456");
+        // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
+        conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
         int status = 0;
         try {
             status = ToolRunner.run(conf, new ReadDBApp(), args);

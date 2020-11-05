@@ -46,7 +46,7 @@ public class MapperJoinApp extends Configured implements Tool {
     /**
      * 实现Mapper类
      */
-    static class MapperJoinAppMapper extends Mapper<LongWritable, Text, Text, NullWritable> {
+    public static class MapperJoinAppMapper extends Mapper<LongWritable, Text, Text, NullWritable> {
         // 存储支付信息
         private final Map<String, String> payInfo = new HashMap<>();
         private Text outputKey;

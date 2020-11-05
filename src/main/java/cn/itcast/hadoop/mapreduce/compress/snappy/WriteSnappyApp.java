@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- *
+ * 将文本文件处理为snappy
  * @ClassName WriteSnappyApp
  * @Description
  * @Created by MengYao
@@ -98,6 +98,12 @@ public class WriteSnappyApp extends Configured implements Tool {
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
+        // 如果core-site.xml没有配置的话，直接在代码中配置即可
+        conf.set("io.compression.codecs",
+                "org.apache.hadoop.io.compress.GzipCodec," +
+                "org.apache.hadoop.io.compress.DefaultCodec," +
+                "org.apache.hadoop.io.compress.BZip2Codec," +
+                "org.apache.hadoop.io.compress.SnappyCodec");
         int status = 0;
         try {
             status = ToolRunner.run(conf, new WriteSnappyApp(), args);

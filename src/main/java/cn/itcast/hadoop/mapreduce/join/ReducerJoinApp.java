@@ -37,7 +37,7 @@ public class ReducerJoinApp extends Configured implements Tool {
     /**
      * 实现加载订单信息表的Mapper类
      */
-    static class ReducerJoinAppOrderMapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class ReducerJoinAppOrderMapper extends Mapper<LongWritable, Text, Text, Text> {
         private Text outputKey;
         private Text outputValue;
         private String delim;
@@ -72,7 +72,7 @@ public class ReducerJoinApp extends Configured implements Tool {
     /**
      * 实现加载支付信息表的Reducer类
      */
-    static class ReducerJoinAppPayMapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class ReducerJoinAppPayMapper extends Mapper<LongWritable, Text, Text, Text> {
         private Text outputKey;
         private Text outputValue;
         private String delim;
@@ -104,7 +104,7 @@ public class ReducerJoinApp extends Configured implements Tool {
     /**
      * 实现Reducer类
      */
-    static class ReduceJoinAppReducer extends Reducer<Text, Text, Text, Text> {
+    public static class ReduceJoinAppReducer extends Reducer<Text, Text, Text, Text> {
         private Text outputKey;
         private Text outputValue;
         @Override
@@ -117,24 +117,20 @@ public class ReducerJoinApp extends Configured implements Tool {
                 throws IOException, InterruptedException {
             Iterator<Text> iterator = values.iterator();
             while (iterator.hasNext()) {
-                context.write(key, iterator.next());
-                
+                String line = iterator.next().toString();
+                // 左表（订单信息）
+                if (!line.contains("ALIPAY")||!line.contains("WEIXIN")) {
+                    this.outputKey.set(line);
+                }
             }
-//            while (iterator.hasNext()) {
-//                String line = iterator.next().toString();
-//                // 左表（订单信息）
-//                if (!line.contains("ALIPAY")||!line.contains("WEIXIN")) {
-//                    this.outputKey.set(line);
-//                }
-//            }
-//            while (iterator.hasNext()) {
-//                String line = iterator.next().toString();
-//                // 右表（支付信息）
-//                if (line.contains("ALIPAY")||line.contains("WEIXIN")) {
-//                    this.outputValue.set(line);
-//                    context.write(outputKey, outputValue);
-//                }
-//            }
+            while (iterator.hasNext()) {
+                String line = iterator.next().toString();
+                // 右表（支付信息）
+                if (line.contains("ALIPAY")||line.contains("WEIXIN")) {
+                    this.outputValue.set(line);
+                    context.write(outputKey, outputValue);
+                }
+            }
         }
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
