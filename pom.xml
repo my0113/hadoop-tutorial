@@ -87,6 +87,14 @@
             <artifactId>hadoop-yarn-server-nodemanager</artifactId>
             <version>${hadoop.version}</version>
         </dependency>
+        <!-- Lzo -->
+        <dependency>
+            <groupId>com.hadoop.gplcompression</groupId>
+            <artifactId>hadoop-lzo</artifactId>
+            <version>0.4.21-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/com/hadoop/gplcompression/hadoop-lzo/0.4.21-SNAPSHOT/hadoop-lzo-0.4.21-SNAPSHOT.jar</systemPath>
+        </dependency>
         <!-- Hive -->
         <dependency>
             <groupId>org.apache.hive</groupId>

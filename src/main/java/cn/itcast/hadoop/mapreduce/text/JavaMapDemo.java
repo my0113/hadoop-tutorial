@@ -1,5 +1,6 @@
 package cn.itcast.hadoop.mapreduce.text;
 
+import java.util.Comparator;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -29,7 +30,7 @@ public class JavaMapDemo {
         // 字典序输出
         treeMap1.forEach((k,v)->System.out.println(k+" = "+v));
         // 创建SortedMap
-        SortedMap<Long, String> sortedMap1 = new TreeMap<>();
+        SortedMap<Long, String> sortedMap1 = new TreeMap<>(Comparator.reverseOrder());
         sortedMap1.put(3L, "France");// 3 法国
         sortedMap1.put(6L,"Spain");// 6 西班牙
         sortedMap1.put(5L, "Russia");// 5 俄罗斯

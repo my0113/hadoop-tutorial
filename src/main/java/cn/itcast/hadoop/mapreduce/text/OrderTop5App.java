@@ -52,6 +52,9 @@ public class OrderTop5App extends Configured implements Tool {
         @Override
         protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             this.bean = OrderBean.of(value.toString());
+            if (top5.size() <= 5) {
+                
+            }
             top5.put(bean.getActualAmount(), bean.getOrderSn());
         }
         @Override
