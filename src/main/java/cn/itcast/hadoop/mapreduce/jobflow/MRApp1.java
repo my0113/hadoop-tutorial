@@ -46,8 +46,7 @@ public class MRApp1 {
         @Override
         protected void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-            String[] fields = value.toString().split(context.getConfiguration().get(DELIMITER), 48);
-            OrderBean bean = new OrderBean(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7], fields[8], fields[9], fields[10], fields[11], fields[12], fields[13], fields[14], fields[15], fields[16], fields[17], fields[18], fields[19], fields[20], fields[21], fields[22], fields[23], fields[24], fields[25], fields[26], fields[27], fields[28], fields[29], fields[30], fields[31], fields[32], fields[33], fields[34], fields[35], fields[36], fields[37], fields[38], fields[39], fields[40], fields[41], fields[42], fields[43], fields[44], fields[45], fields[46], fields[47]);
+            OrderBean bean = OrderBean.of(value.toString());
             String ctime = bean.getCtime();
             double actualAmount = bean.getActualAmount();
             if (ctime.matches("(\\d{4}-\\d{2}-\\d{2}\\s{1}\\d{2}:\\d{2}:\\d{2})")) {
@@ -100,7 +99,7 @@ public class MRApp1 {
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
         // 设置自定义分隔符
-        conf.set(DELIMITER, ",");
+        conf.set(DELIMITER, "##");
         // 实例化作业
         Job job = Job.getInstance(conf, JOB_NAME);
         // 设置作业的主程序

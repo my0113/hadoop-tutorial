@@ -97,7 +97,7 @@ public class MRApp2 {
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
         // 设置自定义分隔符
-        conf.set(DELIMITER, ",");
+        conf.set(DELIMITER, "\t");
         // 实例化作业
         Job job = Job.getInstance(conf, JOB_NAME);
         // 设置作业的主程序

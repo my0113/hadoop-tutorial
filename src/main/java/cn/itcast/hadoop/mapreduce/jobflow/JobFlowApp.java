@@ -24,8 +24,10 @@ public class JobFlowApp {
 
 
     public static void main(String[] args) throws Exception {
+        // 测试使用（第一个参数对应的文件必须在HDFS中存在）
+        args = new String[] {"/apps/data2/orders.csv", "/apps/mapreduce/day_sale", "/apps/mapreduce/month_sale"};
         if (args.length!=3) {
-            System.out.println("Usage: "+JOB_FLOW_NAME+" Input parameters <INPUT_PATH1> <OUTPUT_PATH2> <INPUT_PATH3>");
+            System.out.println("Usage: "+JOB_FLOW_NAME+" Input parameters <INPUT_PATH> <DAY_SALES> <MONTH_SALES>");
             System.exit(-1);
         }
         try {
@@ -52,20 +54,17 @@ public class JobFlowApp {
             // 配置ctrJob2加入主控制器
             jobControl.addJob(ctrJob2);
             // 配置主控制器的行为
-            Thread thread = new Thread(jobControl) {
-                @Override
-                public synchronized void start() {
-                    while (true) {
-                        if (jobControl.allFinished()) {
-                            System.out.println(jobControl.getSuccessfulJobList());
-                            jobControl.stop();
-                            break;
-                        }
-                    }
-                }
-            };
+            Thread thread = new Thread(jobControl);
             // 提交运行主控制器
             thread.start();
+            // 等待作业运行完成
+            while (true) {
+                if (jobControl.allFinished()) {
+                    System.out.println(jobControl.getSuccessfulJobList());
+                    jobControl.stop();
+                    break;
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
