@@ -3,15 +3,16 @@ package cn.itcast.hadoop.mapreduce.join;
 import java.io.IOException;
 import java.util.Iterator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -104,32 +105,39 @@ public class ReducerJoinApp extends Configured implements Tool {
     /**
      * 实现Reducer类
      */
-    public static class ReduceJoinAppReducer extends Reducer<Text, Text, Text, Text> {
-        private Text outputKey;
+    public static class ReduceJoinAppReducer extends Reducer<Text, Text, NullWritable, Text> {
+        private String[] arr;
+        private NullWritable outputKey;
         private Text outputValue;
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
-            this.outputKey = new Text();
+            this.arr = new String[2];
+            this.outputKey = NullWritable.get();
             this.outputValue = new Text();
         }
         @Override
         protected void reduce(Text key, Iterable<Text> values, Context context)
                 throws IOException, InterruptedException {
+            // key（订单号）的value（订单信息+支付信息）
             Iterator<Text> iterator = values.iterator();
             while (iterator.hasNext()) {
                 String line = iterator.next().toString();
-                // 左表（订单信息）
-                if (!line.contains("ALIPAY")||!line.contains("WEIXIN")) {
-                    this.outputKey.set(line);
+                // 如果是订单信息
+                if (line.contains("##")) {
+                    arr[0] = line;
+                }
+                // 如果是支付信息
+                if (line.matches("(WEIXIN|ALIPAY).*")) {
+                    arr[1] = line;
                 }
             }
-            while (iterator.hasNext()) {
-                String line = iterator.next().toString();
-                // 右表（支付信息）
-                if (line.contains("ALIPAY")||line.contains("WEIXIN")) {
-                    this.outputValue.set(line);
-                    context.write(outputKey, outputValue);
-                }
+            /**
+             *  arr[0]为左表（订单信息）数据
+             *  arr[1]为右表（支付信息）数据
+              */
+            if (StringUtils.isNotEmpty(arr[0]) && StringUtils.isNotEmpty(arr[1])) {
+                outputValue.set(arr[0]+"##"+arr[1].replaceAll(",","##"));
+                context.write(outputKey, outputValue);
             }
         }
         @Override
@@ -178,9 +186,14 @@ public class ReducerJoinApp extends Configured implements Tool {
      * @return
      */
     public static int createJob(String[] args) {
+//        System.setProperty("HADOOP_USER_NAME", "root");
         Configuration conf = new Configuration();
         // 客户端Socket写入DataNode的超时时间（以毫秒为单位）
         conf.setLong(DFSConfigKeys.DFS_DATANODE_SOCKET_WRITE_TIMEOUT_KEY, 7200000);
+//        // 设置MapReduce的运行模式为Local模式
+//        conf.set(MRConfig.FRAMEWORK_NAME, "local");
+//        // 设置MapReduce处理数据的文件系统
+//        conf.set(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY, "hdfs://node1.itcast.cn:9820");
         int status = 0;
         try {
             status = ToolRunner.run(conf, new ReducerJoinApp(), args);

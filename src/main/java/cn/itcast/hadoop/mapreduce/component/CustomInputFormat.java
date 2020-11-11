@@ -1,4 +1,4 @@
-package cn.itcast.hadoop.mapreduce.sourcecode;
+package cn.itcast.hadoop.mapreduce.component;
 
 import com.google.common.base.Charsets;
 import org.apache.hadoop.io.LongWritable;
@@ -24,11 +24,11 @@ import java.util.List;
  * @Date 2020/10/21 11:32
  * @Version V1.0
  */
-public class SCInputFormat extends FileInputFormat<LongWritable, Text> {
+public class CustomInputFormat extends FileInputFormat<LongWritable, Text> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SCInputFormat.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CustomInputFormat.class);
 
-    public SCInputFormat() {
+    public CustomInputFormat() {
         LOG.info("==== 初始化SCInputFormat ====");
     }
 

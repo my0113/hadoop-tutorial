@@ -32,8 +32,9 @@ public class UBerApp extends Configured implements Tool {
 
     // 作业名称
     private static final String JOB_NAME = UBerApp.class.getSimpleName();
-    // 行数据分隔符
+    // DFS块大小（可以通过读配置文件实现配置化）
     private static final long DFS_BLOCK_BYTES = 268435456L;
+    // 最大切分块对应的Map任务数
     private static final int MAX_MAP_NUMBER = 9;
 
 
@@ -155,7 +156,7 @@ public class UBerApp extends Configured implements Tool {
          */
         conf.setLong(MRJobConfig.JOB_UBERTASK_MAXBYTES, DFS_BLOCK_BYTES);
         /**
-         * 设置文件切分大小（单位：字节）始终按照UBer模式允许的最小设置
+         * 设置文件切分大小（单位：字节）为UBer模式允许的最小设置（确保该作业始终处于UBer模式）
          */
         conf.setLong(FileInputFormat.SPLIT_MAXSIZE, DFS_BLOCK_BYTES / (MAX_MAP_NUMBER-1));
         int status = 0;

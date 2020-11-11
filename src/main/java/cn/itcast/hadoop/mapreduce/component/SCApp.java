@@ -1,4 +1,4 @@
-package cn.itcast.hadoop.mapreduce.sourcecode;
+package cn.itcast.hadoop.mapreduce.component;
 
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -30,7 +30,7 @@ public class SCApp extends Configured implements Tool {
         // 配置作业主类
         job.setJarByClass(this.getClass());
         // 配置输入处理为TextInputFormat
-        job.setInputFormatClass(SCInputFormat.class);
+        job.setInputFormatClass(CustomInputFormat.class);
         // 配置作业的输入数据路径
         FileInputFormat.addInputPath(job, new Path(args[0]));
         // 配置作业的输出数据路径

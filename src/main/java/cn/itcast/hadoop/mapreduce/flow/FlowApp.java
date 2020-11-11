@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-
+/**
+ * 流量分析案例
+ */
 public class FlowApp extends Configured implements Tool {
 
     // 作业名称

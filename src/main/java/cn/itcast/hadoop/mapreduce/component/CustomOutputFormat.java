@@ -1,4 +1,4 @@
-package cn.itcast.hadoop.mapreduce.sourcecode;
+package cn.itcast.hadoop.mapreduce.component;
 
 /**
  * @ClassName SCOutputFormat
@@ -7,7 +7,7 @@ package cn.itcast.hadoop.mapreduce.sourcecode;
  * @Date 2020/10/21 15:41
  * @Version V1.0
  */
-public class SCOutputFormat {
+public class CustomOutputFormat {
 
 
 
